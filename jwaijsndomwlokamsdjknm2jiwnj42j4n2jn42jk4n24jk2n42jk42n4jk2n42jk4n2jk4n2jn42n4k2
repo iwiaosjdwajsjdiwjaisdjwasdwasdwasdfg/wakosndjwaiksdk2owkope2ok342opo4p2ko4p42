@@ -1,0 +1,93 @@
+-- We must localize functions we use in the hooks to ensure we can protect the environment and still use the functions --
+local getnamecallmethod = getnamecallmethod or nil
+local hookfunction = hookfunction or nil
+local hookmetamethod = hookmetamethod or nil
+local identifyexecutor = identifyexecutor or nil
+local checkcaller = checkcaller or nil
+
+if not getnamecallmethod then 
+    return
+end
+if not hookfunction then
+    return 
+end
+if not hookmetamethod then
+    return
+end
+if not checkcaller then
+    return 
+end
+
+local LocalizationService = game:GetService("LocalizationService")
+local ScriptContext = game:GetService("ScriptContext")
+local RunService = game:GetService("RunService")
+local RenderStepped = RunService.RenderStepped
+local Players = game:GetService("Players")
+
+-- AutoExec fixes --
+if not Players.LocalPlayer then
+    repeat RenderStepped:Wait() until Players.LocalPlayer
+end
+-- ~~ --
+local _ENV
+local _Globals
+if getrenv then
+	local setreadonly = setreadonly or table.freeze
+	_Globals = {
+        __metatable = "This metatable is locked";
+        }
+        for i, v in next, getrenv() do
+            _Globals[i] = v
+        end
+        _ENV = {
+        __index = _Globals;
+        __metatable = "This metatable is locked";
+        }
+        for i, v in next, getrenv() do
+            _ENV[i] = v
+        end
+	pcall(function() setreadonly(_Globals, true) end)
+	pcall(function() setreadonly(_ENV, true) end)
+end
+-- ~~ --
+
+local NewIndex
+NewIndex = hookmetamethod(game, "__newindex", newcclosure(function(Self, Property, ...)
+    if not checkcaller() then
+        game:GetService("StarterGui"):SetCore("ResetButtonCallback", true)
+        --[[if Property == "WalkSpeed" then
+            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+            return
+        end]]
+        if Property == "Health" or Property == "JumpPower" or Property == "HipHeight" then
+            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+			return
+		end
+    end
+    if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+    return NewIndex(Self, Property, ...)
+end))
+
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(Self, ...)
+    local NamecallMethod = getnamecallmethod()
+    local Arguments = {...}
+    if not checkcaller() then
+        if NamecallMethod == "Destroy" and tostring(Self) == "BodyGyro" or NamecallMethod == "Destroy" and tostring(Self) == "BodyVelocity" then
+            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+            return wait(9e9)
+        end
+        if NamecallMethod == "BreakJoints" and Self.Name == Players.LocalPlayer.Name then
+            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+			return wait(9e9)
+		end
+        if NamecallMethod == "FireServer" then
+            if Self.Name == "lIII" or tostring(Self.Parent) == "ReplicatedStorage" then
+                if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+                return wait(9e9)
+            end
+        end
+    end
+    if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+    return OldNamecall(Self, ...)
+end))
