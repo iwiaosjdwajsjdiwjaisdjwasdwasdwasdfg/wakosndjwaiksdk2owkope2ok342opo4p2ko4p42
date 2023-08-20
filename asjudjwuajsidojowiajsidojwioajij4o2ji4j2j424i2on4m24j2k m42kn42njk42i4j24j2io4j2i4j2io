@@ -1,1 +1,145 @@
+-- We must localize functions we use in the hooks to ensure we can protect the environment and still use the functions --
+local getnamecallmethod = getnamecallmethod or nil
+local hookfunction = hookfunction or nil
+local hookmetamethod = hookmetamethod or nil
+local identifyexecutor = identifyexecutor or nil
+local checkcaller = checkcaller or nil
+-- ~~ --
 
+-- Compatibility checks --
+if not getnamecallmethod then 
+    return
+end
+if not hookfunction then
+    return 
+end
+if not hookmetamethod then
+    return
+end
+if not checkcaller then
+    return 
+end
+-- ~~ --
+
+local ScriptContext = game:GetService("ScriptContext")
+local RunService = game:GetService("RunService")
+local RenderStepped = RunService.RenderStepped
+local Players = game:GetService("Players")
+
+-- AutoExec fixes --
+if not Players.LocalPlayer then
+    repeat RenderStepped:Wait() until Players.LocalPlayer
+end
+-- ~~ --
+
+-- We need DisableErrorSignals and EnableErrorSignals to safely output errors during the validation check --
+local function DisableErrorSignals()
+    if getconnections then
+        for i, v in next, getconnections(ScriptContext.Error) do
+            v:Disable()
+        end
+        for i, v in next, getconnections(ScriptContext.ErrorDetailed) do
+            v:Disable()
+        end
+    end
+end
+local function EnableErrorSignals()
+    if getconnections then
+        for i, v in next, getconnections(ScriptContext.Error) do
+            v:Enable()
+        end
+        for i, v in next, getconnections(ScriptContext.ErrorDetailed) do
+            v:Enable()
+        end
+    end
+end
+-- ~~ --
+
+-- Main Validator Function --
+local IsValidKick = function(Self, ...)
+    task.spawn(pcall, DisableErrorSignals)
+    local Args = {...}
+    local Player = Instance.new("Player")
+    local Success, Err = pcall(function()
+        if typeof(Self) == "Instance" and Self:IsA("Player") then
+            Player.Kick(Player, Args)
+        else
+            Player.Kick(Self, Args)
+        end
+    end)
+    if Success or Self == Players.LocalPlayer and (Args[1] == nil or Args[1] ~= nil and type(Args[1]) == "string") or Err and (Err == "Cannot kick a non-local Player from a LocalScript" or Err == "Player:Kick() can only be called on a Player under Players") then
+        task.spawn(pcall, EnableErrorSignals)
+        return true
+    elseif Err and (Err == "Expected ':' not '.' calling member function Kick") then
+        task.spawn(pcall, EnableErrorSignals)
+        return false
+    end
+    task.spawn(pcall, EnableErrorSignals)
+end
+-- ~~ --
+
+-- Prevents Environment Stealing on ShitSploits --
+local _ENV
+local _Globals
+if getrenv then
+	local setreadonly = setreadonly or table.freeze
+	_Globals = {
+        __metatable = "This metatable is locked";
+        }
+        for i, v in next, getrenv() do
+            _Globals[i] = v
+        end
+        _ENV = {
+        __index = _Globals;
+        __metatable = "This metatable is locked";
+        }
+        for i, v in next, getrenv() do
+            _ENV[i] = v
+        end
+	pcall(function() setreadonly(_Globals, true) end)
+	pcall(function() setreadonly(_ENV, true) end)
+end
+-- ~~ --
+
+-- Hook .Kick --
+local OldKick
+OldKick = hookfunction(Players.LocalPlayer.Kick, newcclosure(function(Self, ...)
+    if not checkcaller() and Self == Players.LocalPlayer and IsValidKick(Self, ...) then
+        if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+        return
+    end
+    if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+    return OldKick(Self, ...)
+end))
+-- ~~ --
+
+-- Hook .kick (yes this exists) --
+local Oldkick
+Oldkick = hookfunction(Players.LocalPlayer.kick, newcclosure(function(Self, ...)
+    if not checkcaller() and Self == Players.LocalPlayer and IsValidKick(Self, ...) then
+        if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+        return
+    end
+    if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+    return Oldkick(Self, ...)
+end))
+-- ~~ --
+
+-- Hook Namecall --
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(Self, ...)
+    local NamecallMethod = getnamecallmethod()
+    if not checkcaller() then 
+        if Self == Players.LocalPlayer and NamecallMethod == "Kick" then
+            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+            return
+        end
+        if Self == Players.LocalPlayer and NamecallMethod == "kick" then
+            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+            return
+        end
+    end
+    if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
+    return OldNamecall(Self, ...)
+end))
+-- ~~ --
