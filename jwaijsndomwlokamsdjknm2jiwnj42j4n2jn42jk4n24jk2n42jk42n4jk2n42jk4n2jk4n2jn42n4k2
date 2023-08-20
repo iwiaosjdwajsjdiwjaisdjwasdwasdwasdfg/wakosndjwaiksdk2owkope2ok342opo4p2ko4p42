@@ -1,4 +1,3 @@
--- We must localize functions we use in the hooks to ensure we can protect the environment and still use the functions --
 local getnamecallmethod = getnamecallmethod or nil
 local hookfunction = hookfunction or nil
 local hookmetamethod = hookmetamethod or nil
@@ -24,11 +23,10 @@ local RunService = game:GetService("RunService")
 local RenderStepped = RunService.RenderStepped
 local Players = game:GetService("Players")
 
--- AutoExec fixes --
 if not Players.LocalPlayer then
     repeat RenderStepped:Wait() until Players.LocalPlayer
 end
--- ~~ --
+
 local _ENV
 local _Globals
 if getrenv then
@@ -49,16 +47,10 @@ if getrenv then
 	pcall(function() setreadonly(_Globals, true) end)
 	pcall(function() setreadonly(_ENV, true) end)
 end
--- ~~ --
 
 local NewIndex
 NewIndex = hookmetamethod(game, "__newindex", newcclosure(function(Self, Property, ...)
     if not checkcaller() then
-        game:GetService("StarterGui"):SetCore("ResetButtonCallback", true)
-        --[[if Property == "WalkSpeed" then
-            if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
-            return
-        end]]
         if Property == "Health" or Property == "JumpPower" or Property == "HipHeight" then
             if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
 			return
