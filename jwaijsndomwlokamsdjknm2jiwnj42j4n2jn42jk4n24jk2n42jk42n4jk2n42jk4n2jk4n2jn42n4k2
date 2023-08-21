@@ -84,3 +84,5 @@ OldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(Self, ...)
     if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
     return OldNamecall(Self, ...)
 end))
+
+print("nigg")
