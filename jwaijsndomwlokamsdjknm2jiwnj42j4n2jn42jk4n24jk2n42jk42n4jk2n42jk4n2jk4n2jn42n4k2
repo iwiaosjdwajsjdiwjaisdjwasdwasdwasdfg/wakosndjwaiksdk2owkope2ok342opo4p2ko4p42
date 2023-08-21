@@ -51,6 +51,7 @@ end
 local NewIndex
 NewIndex = hookmetamethod(game, "__newindex", newcclosure(function(Self, Property, ...)
     if not checkcaller() then
+        game:GetService("StarterGui"):SetCore("ResetButtonCallback", true)
         if Property == "Health" or Property == "JumpPower" or Property == "HipHeight" then
             if getrenv and identifyexecutor and not identifyexecutor():find("Synapse") then setfenv(1, _ENV) end
 			return
